@@ -1,0 +1,48 @@
+name: 'TFGuard Standard Scanner'
+description: 'Fast Terraform security scanning with standard rules and 50 req/hr rate limit.'
+author: 'Sandipan'
+branding:
+  icon: 'shield'
+  color: 'green'
+inputs:
+  target-dir:
+    description: 'Directory containing Terraform files to check'
+    required: false
+    default: '.'
+  fail-on-critical:
+    description: 'Fail the pipeline if CRITICAL issues are found'
+    required: false
+    default: 'true'
+  fail-on-high:
+    description: 'Fail the pipeline if HIGH issues are found'
+    required: false
+    default: 'false'
+  fail-on-medium:
+    description: 'Fail the pipeline if MEDIUM issues are found'
+    required: false
+    default: 'false'
+  fail-on-low:
+    description: 'Fail the pipeline if LOW issues are found'
+    required: false
+    default: 'false'
+  api-url:
+    description: 'Override TFGuard API URL'
+    required: false
+    default: 'https://tfgaurd.com/api/check-files'
+  api-key:
+    description: 'TFGuard API Key (Required)'
+    required: true
+runs:
+  using: 'composite'
+  steps:
+    - name: Run TFGuard Analysis
+      shell: bash
+      run: |
+        python3 ${{ github.action_path }}/scripts/action_runner.py \
+          --target-dir "${{ inputs.target-dir }}" \
+          --fail-on-critical "${{ inputs.fail-on-critical }}" \
+          --fail-on-high "${{ inputs.fail-on-high }}" \
+          --fail-on-medium "${{ inputs.fail-on-medium }}" \
+          --fail-on-low "${{ inputs.fail-on-low }}" \
+          --api-url "${{ inputs.api-url }}" \
+          --api-key "${{ inputs.api-key }}"
