@@ -9,20 +9,22 @@ import urllib.error
 import argparse
 
 def create_multipart_payload(zip_bytes, filename, boundary):
-    # Construct standard multipart/form-data payload
-    parts = []
+    # Construct standard multipart/form-data payload with explicit CRLF management
+    cr = b'\r\n'
+    payload = b''
     
     # Add files field
-    parts.append(f"--{boundary}".encode('utf-8'))
-    parts.append(f'Content-Disposition: form-data; name="files"; filename="{filename}"'.encode('utf-8'))
-    parts.append(b'Content-Type: application/zip')
-    parts.append(b'')
-    parts.append(zip_bytes)
+    payload += b'--' + boundary.encode('utf-8') + cr
+    payload += f'Content-Disposition: form-data; name="files"; filename="{filename}"'.encode('utf-8') + cr
+    payload += b'Content-Type: application/octet-stream' + cr # Use generic stream for ZIP
+    payload += cr # Extra newline before data
+    payload += zip_bytes
+    payload += cr # Newline after data
     
-    parts.append(f"--{boundary}--".encode('utf-8'))
-    parts.append(b'')
+    # End multipart
+    payload += b'--' + boundary.encode('utf-8') + b'--' + cr
     
-    return b'\r\n'.join(parts)
+    return payload
 
 def main():
     parser = argparse.ArgumentParser(description='TFGuard GitHub Action Runner')
@@ -45,7 +47,7 @@ def main():
     
     print(f"::group::🔍 Preparing TFGuard Scan")
     print(f"Target directory: {args.target_dir}")
-    print(f"API Endpiont: {args.api_url}")
+    print(f"API Endpoint: {args.api_url}")
     
     # 1. Collect .tf files
     tf_files = []
@@ -104,9 +106,11 @@ def main():
     except urllib.error.HTTPError as e:
         status_code = e.code
         try:
-            response_data = json.loads(e.read().decode('utf-8'))
+            raw_response = e.read().decode('utf-8')
+            response_data = json.loads(raw_response)
         except:
             response_data = {"error": f"HTTP {status_code}: {e.reason}"}
+            print(f"::debug::Raw Error Response: {e.read().decode('utf-8') if not 'raw_response' in locals() else raw_response}")
     except Exception as e:
         print(f"::error::Failed to connect to TFGuard API: {str(e)}")
         sys.exit(1)
